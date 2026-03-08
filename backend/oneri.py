@@ -19,7 +19,7 @@ class RecommendationEngine:
         self.book_stats = None
 
     def load_data(self):
-        print("📂 Loading data...")
+        print("Loading data...")
         books_path = os.path.join(self.data_dir, 'Books.csv')
         ratings_path = os.path.join(self.data_dir, 'Ratings.csv')
         
@@ -57,13 +57,13 @@ class RecommendationEngine:
         valid_books = set(self.books_df['ISBN'])
         self.ratings_df = self.ratings_df[self.ratings_df['ISBN'].isin(valid_books)]
 
-        print(f"✅ Data loading complete. {len(self.ratings_df)} valid ratings remaining.")
+        print(f"Data loading complete. {len(self.ratings_df)} valid ratings remaining.")
 
     def train_model(self):
         if self.ratings_df is None:
             self.load_data()
 
-        print("🚀 Computing average book stats for fallback recommendations...")
+        print("Computing average book stats for fallback recommendations...")
         # Pure pandas content-based / popularity-based model as fallback to keep it fast
         self.book_stats = self.ratings_df.groupby('ISBN').agg(
             avg_rating=('rating', 'mean'),
@@ -82,22 +82,59 @@ class RecommendationEngine:
         self.book_stats = self.book_stats.dropna(subset=['title']).drop_duplicates(subset=['title'], keep='first').drop('title', axis=1)
 
         self.is_trained = True
-        print("✅ Simple model training complete.")
+        print("Simple model training complete.")
 
-    def get_recommendations_cf(self, user_id, n=10, exclude_isbns=None):
+    def get_recommendations_cf(self, user_id, n=10, liked_isbns=None):
         if not self.is_trained:
             return []
             
-        exclude_isbns = set(exclude_isbns or [])
+        liked_isbns = set(liked_isbns or [])
         user_history = self.ratings_df[self.ratings_df['user_id'] == user_id]
-        read_isbns = set(user_history['ISBN']) | exclude_isbns
+        read_isbns = set(user_history['ISBN']) | liked_isbns
         
-        # Simplified memory-based logic: return top-rated books that user hasn't read
-        candidates = self.book_stats[~self.book_stats['ISBN'].isin(read_isbns)]
+        candidates = None
+
+        if liked_isbns:
+            print(f"CF Start - liked_isbns count: {len(liked_isbns)}")
+            # 1. Find similar users who rated the books the user likes
+            similar_users = self.ratings_df[self.ratings_df['ISBN'].isin(liked_isbns)]['user_id'].unique()
+            print(f"CF Step 1 - found {len(similar_users)} similar users")
+            
+            if len(similar_users) > 0:
+                # 2. Get ratings from these similar users
+                similar_users_ratings = self.ratings_df[self.ratings_df['user_id'].isin(similar_users)]
+                print(f"CF Step 2 - filtered ratings DataFrame has {len(similar_users_ratings)} rows")
+                
+                # 3. Filter out books the user has already read
+                similar_users_ratings = similar_users_ratings[~similar_users_ratings['ISBN'].isin(read_isbns)]
+                
+                # 4. Calculate a score based on frequency and average rating from similar users
+                if not similar_users_ratings.empty:
+                    book_scores = similar_users_ratings.groupby('ISBN').agg(
+                        count=('rating', 'count'),
+                        avg_rating=('rating', 'mean')
+                    ).reset_index()
+                    
+                    # Compute score: penalize low counts, reward high ratings
+                    C = book_scores['count'].mean()
+                    m = book_scores['avg_rating'].mean()
+                    book_scores['score'] = (book_scores['count'] / (book_scores['count'] + C) * book_scores['avg_rating']) + (C / (book_scores['count'] + C) * m)
+                    
+                    candidates = book_scores.sort_values('score', ascending=False)
+        
+        # Fallback to general popular books if CF didn't yield enough or user has no liked_isbns
+        if candidates is None or candidates.empty or len(candidates) < n:
+            fallback_candidates = self.book_stats[~self.book_stats['ISBN'].isin(read_isbns)]
+            if candidates is not None and not candidates.empty:
+                candidates = pd.concat([candidates, fallback_candidates]).drop_duplicates(subset=['ISBN'])
+            else:
+                candidates = fallback_candidates
+        
+        print(f"CF Completed. Found {len(candidates) if candidates is not None else 0} candidates before limiting.")
         top_candidates = candidates.head(n * 5)
         
         results = []
-        seen_authors = set()
+        seen_titles = set()
         for idx, row in top_candidates.iterrows():
             if len(results) >= n:
                 break
@@ -105,8 +142,9 @@ class RecommendationEngine:
             info = self.books_dict.get(isbn)
             if not info:
                 continue
-            author = str(info['authors']).lower()
-            if author in seen_authors: 
+                
+            title = str(info['title']).lower()
+            if title in seen_titles: 
                 continue
                 
             results.append({
@@ -115,7 +153,7 @@ class RecommendationEngine:
                 "authors": info['authors'],
                 "image_url": info['image_url']
             })
-            seen_authors.add(author)
+            seen_titles.add(title)
             
         return results
 

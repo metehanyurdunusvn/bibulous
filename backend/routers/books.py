@@ -25,6 +25,7 @@ def search_books(q: str, n: int = 10):
 @router.get("/recommend/{user_id}")
 def get_recommendations(user_id: int, db: Session = Depends(get_db)):
     """Get recommendations for a user based on their liked books and CF model"""
+    print(f"--- Incoming request for user {user_id} ---")
     # Fetch liked books from DB
     liked_books = db.query(models.UserLikedBook).filter(models.UserLikedBook.user_id == user_id).all()
     liked_isbns = [lb.isbn for lb in liked_books]
@@ -34,7 +35,7 @@ def get_recommendations(user_id: int, db: Session = Depends(get_db)):
         cf_recs = recommender.get_recommendations_cf(
             user_id=user_id, # Can use their ID if they have rated before, otherwise acts as cold start
             n=10,
-            exclude_isbns=liked_isbns
+            liked_isbns=liked_isbns
         )
     except Exception as e:
         cf_recs = []
@@ -97,6 +98,23 @@ def get_comments(isbn: str, db: Session = Depends(get_db)):
     return results
 
 # MOVED TO THE VERY END WITH A DIFFERENT PATH OR JUST NO ISBN SO IT DOESNT CATCH TOP
+@router.get("/{isbn}/similar", response_model=List[schemas.BookResponse])
+def get_similar_books(isbn: str):
+    """Get recommendations based on a single book's author and title"""
+    author_recs = recommender.get_recommendations_same_author([isbn], n=5)
+    title_recs = recommender.get_recommendations_similar_title([isbn], n=5)
+    
+    # Combine and deduplicate
+    seen_isbns = {isbn} # don't include the current book
+    combined = []
+    
+    for rec in author_recs + title_recs:
+        if rec["ISBN"] not in seen_isbns:
+            combined.append(rec)
+            seen_isbns.add(rec["ISBN"])
+            
+    return combined
+
 @router.get("/detail/{isbn}", response_model=schemas.BookResponse)
 def get_book(isbn: str):
     info = recommender.books_dict.get(isbn)
