@@ -1,52 +1,80 @@
 # Bibulous Backend
 
-This is the FastAPI backend serving the Bibulous smart book discovery engine. It includes a User-Based Collaborative Filtering algorithm utilizing Pandas to deliver highly personalized book recommendations.
+FastAPI tabanlı REST API ve akıllı kitap öneri motoru.
 
-## Requirements
-
-Before starting, ensure you have Python 3.8+ installed. 
-
-This project uses:
-- `FastAPI` 
-- `Uvicorn` for ASGI server hosting
-- `SQLAlchemy` for handling SQLite User and Ratings Data
-- `Pandas` and `Numpy` for recommendation dataset generation and filtering
-- `Scikit-learn` for similarity scores
-
-## Installation
-
-We strictly recommend using a virtual environment.
-
-1. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   ```
-2. Activate it:
-   - **Windows PowerShell**: `.\venv\Scripts\Activate.ps1`
-   - **Windows CMD**: `.\venv\Scripts\activate.bat`
-   - **macOS / Linux**: `source venv/bin/activate`
-
-3. Install the specific backend requirements:
-   ```bash
-   # If a requirements.txt exists:
-   pip install -r requirements.txt
-   
-   # Or install packages directly if no file exists:
-   pip install fastapi uvicorn sqlalchemy pandas numpy scikit-learn
-   ```
-
-## Starting the Server
-
-The application server uses Uvicorn. To spin it up locally with auto-reloading:
+## Bağımlılıklar
 
 ```bash
+pip install -r requirements.txt
+```
+
+| Paket | Kullanım |
+|-------|----------|
+| `fastapi` | REST API framework |
+| `uvicorn` | ASGI sunucu |
+| `sqlalchemy` | SQLite ORM |
+| `pandas` / `numpy` | Veri işleme, Collaborative Filtering |
+| `pydantic` | Şema ve veri doğrulama |
+| `python-dotenv` | Ortam değişkenleri |
+
+## Kurulum
+
+```bash
+# 1. Sanal ortam oluştur
+python -m venv venv
+
+# 2. Aktif et
+# Windows PowerShell:
+.\venv\Scripts\Activate.ps1
+# macOS / Linux:
+source venv/bin/activate
+
+# 3. Bağımlılıkları kur
+pip install -r requirements.txt
+
+# 4. Sunucuyu başlat
 uvicorn main:app --port 8000 --reload
 ```
 
-## Structure Overview
+API: `http://localhost:8000`  
+Swagger: `http://localhost:8000/docs`
 
-- `main.py`: Bootstraps the application, CORS config, and triggers the `oneri.py` Collaborative Filtering train sequence on startup.
-- `oneri.py`: Pre-loads book statings and coordinates User-Based Collaborative filtering arrays against the `BX-Books` underlying data. 
-- `routers/`: Directory containing endpoints for specific resources like `books.py` mapped to Next.js components.
-- `database.py`: Handles persistent connectivity to the local `bibulous.db` SQL file.
-- `models.py`: Defines database schemas mapping for reading history, users, comments.
+## Dosya Yapısı
+
+```
+backend/
+├── main.py           # Uygulama başlatma, CORS, startup eventi
+├── oneri.py          # RecommendationEngine sınıfı (CF + popülerlik + tag bazlı)
+├── database.py       # SQLite bağlantısı (SQLAlchemy engine)
+├── models.py         # ORM modelleri (User, LikedBook, Comment)
+├── schemas.py        # Pydantic şemaları
+├── requirements.txt  # Python bağımlılıkları
+└── routers/
+    ├── books.py      # /api/books — öneri, detay, arama, yorum endpoint'leri
+    ├── users.py      # /api/users — kayıt, beğeni endpoint'leri
+    └── forum.py      # /api/forum — forum gönderi endpoint'leri
+```
+
+## Öneri Motoru (`oneri.py`)
+
+`RecommendationEngine` sınıfı startup'ta otomatik yüklenir ve şu yöntemleri sağlar:
+
+- **`get_recommendations_cf`** — Kullanıcı tabanlı işbirlikçi filtreleme
+- **`get_recommendations_with_metrics`** — CF + popülerlik + tag benzerlik skorları ile metrikli öneri
+- **`get_recommendations_same_author`** — Aynı yazarın diğer kitapları
+- **`get_recommendations_similar_title`** — Başlık benzerliğine göre öneriler
+- **`search_books`** — Başlık/yazar tam metin arama
+
+## Veri Setleri
+
+```
+archives/       # BX-Books (Book-Crossing)
+├── Books.csv
+├── Ratings.csv
+└── Users.csv
+
+datas/          # Goodreads (tag verisi)
+├── books.csv
+├── tags.csv
+└── book_tags.csv
+```

@@ -8,6 +8,7 @@ export default function Navbar() {
                 <Link href="/home" style={{ color: 'var(--text-main)', transition: 'color 0.3s' }}>Home</Link>
                 <Link href="/search" style={{ color: 'var(--text-main)', transition: 'color 0.3s' }}>Search</Link>
                 <Link href="/forum" style={{ color: 'var(--text-main)', transition: 'color 0.3s' }}>Forum</Link>
+                <Link href="/metrics" style={{ color: 'var(--text-main)', transition: 'color 0.3s' }}>Metrics</Link>
             </div>
         </nav>
     );

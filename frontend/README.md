@@ -1,48 +1,57 @@
 # Bibulous Frontend
 
-This directory houses the frontend code for Bibulous, a Next.js 15+ application configured with modern glassmorphism UI elements, dark mode, and highly aesthetic recommendation carousels.
+Next.js 16 ile geliştirilmiş, dark-mode glassmorphism tasarımlı kitap keşif arayüzü.
 
-This project is bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
-
-## Requirements
-Ensure you have installed:
-- Node.js >= 18.x
-- npm >= 9.x (or yarn / pnpm equivalents)
-
-## Getting Started
-
-First, install the required node modules:
+## Kurulum
 
 ```bash
 npm install
+npm run dev
 ```
 
-Since the frontend relies heavily on the FastAPI Python engine to deliver recommendations, **you must ensure the backend is running at http://localhost:8000 before proceeding.**
+Uygulama: `http://localhost:3000`
 
-Next, start the development server:
+> Backend'in `http://localhost:8000` adresinde çalışıyor olması gerekir.
+
+## Teknoloji
+
+- **Next.js 16** — App Router, TypeScript
+- **React 19**
+- **Vanilla CSS** — `src/app/globals.css` içinde özel tasarım sistemi
+- **Outfit** — Google Fonts
+
+## Sayfa Yapısı
+
+```
+src/app/
+├── page.tsx          # Onboarding — kayıt + kitap seçimi
+├── layout.tsx        # Global layout ve metadata
+├── globals.css       # Tasarım sistemi (renk değişkenleri, glassmorphism, carousel)
+├── home/             # Ana sayfa — kişiselleştirilmiş öneri carousel'ları
+├── book/[isbn]/      # Kitap detay sayfası
+├── search/           # Kitap arama
+├── forum/            # Forum gönderileri
+└── metrics/          # Öneri metrikleri görselleştirmesi
+
+src/components/
+├── BookCard.tsx      # Kitap kartı bileşeni
+└── Navbar.tsx        # Navigasyon çubuğu
+```
+
+## Tasarım Sistemi
+
+`globals.css` içinde tanımlı CSS değişkenleri:
+
+| Değişken | Değer | Kullanım |
+|----------|-------|----------|
+| `--bg-base` | `#0a0f1c` | Sayfa arka planı |
+| `--brand-primary` | `#6366f1` | İndigo — buton, vurgu |
+| `--brand-secondary` | `#a855f7` | Mor — gradient |
+| `--brand-tertiary` | `#0ea5e9` | Gökyüzü mavisi — hover |
+
+## Build
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run start
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Architecture
-
-- `src/app/page.tsx`: Initial sign-up and onboarding selection flow.
-- `src/app/home/page.tsx`: Primary "Top Picks" dynamic dashboard.
-- `src/app/book/[isbn]/page.tsx`: Specific book detail views with built-in nested similarity carousels.
-- `src/components/`: Reusable stylized components like `BookCard.tsx` and `Navbar.tsx`.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
